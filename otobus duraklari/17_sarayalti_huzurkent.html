@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Halk Konutları</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <style>
+    #map {
+      height: 100vh; 
+      width: 100%; 
+    }
+
+    .moving-marker {
+      background-color: red; 
+      border-radius: 50%; 
+      width: 15px; 
+      height: 15px; 
+    }
+    body{
+      overflow: hidden;
+    }
+
+    #startButton, #stopButton {
+      position: relative; 
+      z-index: 1000; 
+      padding: 10px;
+      border: 1px solid gray;
+      cursor: pointer;
+      margin-left: 10px; 
+    }
+
+    #startButton {
+      background-color: green; 
+      color: white;
+    }
+
+    #stopButton {
+      background-color: red;
+      color: white;
+      display: none; 
+    }
+
+    #map {
+      position: relative;
+    }
+
+    #speedBar {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 1000;
+      background-color: white;
+      border: 1px solid gray;
+      padding: 5px;
+      display: flex; 
+      align-items: center; 
+      border-radius: 5px; 
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+  <div id="speedBar">
+    Hız:
+    <button id="speed1x">1x</button>
+    <button id="speed2x">2x</button>
+    <button id="speed4x">4x</button>
+    <button id="startButton">Animasyonu Başlat</button>
+    <button id="stopButton">Animasyonu Durdur</button>
+  </div>
+  <script>
+    var map = L.map('map').setView([38.682, 29.408], 13); 
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:
+        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    // Koordinatlar ve isimler
+    var busStops = [
+    { name: 'Hastane Durağı', lat: 38.67752532581029, lon: 29.45079740667378 },
+    { name: 'Nuri Şeker Cad. Çağrı Merkezi Önü', lat: 38.67887843, lon: 29.44079488 },
+    { name: 'Nuri Şeker Cad. 1 Dadaş Sk.', lat: 38.67898709, lon: 29.43452565 },
+    { name: 'Nuri Şeker Cad. No 256', lat: 38.67913145, lon: 29.43120367 },
+    { name: 'Nuri Şeker Cad. No 252', lat: 38.67932143, lon: 29.42923283 },
+    { name: 'Nuri Şeker Cad. Uosb Önü', lat: 38.67940896, lon: 29.42753048 },
+    { name: 'Nuri Şeker Cad. No 153', lat: 38.67948658, lon: 29.42563474 },
+    { name: 'Nuri Şeker Cad. No 131', lat: 38.67956164, lon: 29.42326342 },
+    { name: 'Nuri Şeker Cad. No 105', lat: 38.67967519, lon: 29.42092481 },
+    { name: 'Nuri Şeker Cad. 2. Kayhan Sk.', lat: 38.67973451, lon: 29.41926238 },
+    { name: 'Mehmet Akif Ersoy Parkı', lat: 38.67981006, lon: 29.41783833 },
+    { name: 'Nuri Şeker Cad. No 31', lat: 38.67987866, lon: 29.41490451 },
+    { name: 'Ömer Bedrettin Okulu', lat: 38.67987097, lon: 29.41342953 },
+    { name: 'Nuri Şeker Cad. No 68', lat: 38.67991312, lon: 29.41112681 },
+    { name: 'İslice, Nuri Şeker Cd-1.Durak', lat: 38.67988244390366, lon: 29.40880166639873 },
+    { name: 'Köme-1.Durak', lat: 38.68068619257377, lon: 29.40739856590256 },
+    { name: 'Köme, Şht. Ali Rıza Horasan Cd-1.Durak', lat: 38.68234014978023, lon: 29.40481750593232 },
+    { name: 'Işık, Tirit Sk-1.Durak', lat: 38.68115313025941, lon: 29.40297960828314 },
+    { name: 'Uşak, Özdemir- 1.Durak', lat: 38.67950591253149, lon: 29.4027434915829 },
+    { name: 'Ünalan, Zübeyde Hanım Cd- 1.Durak', lat: 38.67781356030989, lon: 29.40234286532517 },
+    { name: 'Ünalan, Zübeyde Hanım Cd- 2.Durak', lat: 38.67607954486443, lon: 29.40189139811108 },
+    { name: 'Kurtuluş, Doğan Özkaraman Cd-1.Durak', lat: 38.67384468503202, lon: 29.40312187210212 },
+    { name: 'Durak, İsmet Paşa Cd-2.Durak', lat: 38.6724152864117, lon: 29.40654663951922 },
+    { name: 'Dörtyol Kızılay Durağı', lat: 38.67005517889267, lon: 29.4075910617378 },
+    { name: 'Pancar Koop. Durağı', lat: 38.66862429853812, lon: 29.40799107248317 },
+    { name: 'Orhan Dengiz Bulvarı 1. Durak', lat: 38.6666199854916, lon: 29.4072351063635 },
+    { name: 'Orhan Dengiz Bulvarı 2. Durak', lat: 38.6648544483979, lon: 29.4065257284678 },
+    { name: 'Orhan Dengiz Bulvarı 3. Durak', lat: 38.6630741559817, lon: 29.4058121156304 },
+    { name: 'Orhan Dengiz Bulvarı 4. Durak', lat: 38.66198808, lon: 29.4054502710459 },
+    { name: 'Orhan Dengiz Bulvarı 5. Durak', lat: 38.6606908777528, lon: 29.4054319028114 },
+    { name: 'Orhan Dengiz Bulvarı 6. Durak', lat: 38.65914373, lon: 29.4052125700949 },
+    { name: 'Ova Cad. 1 Durak', lat: 38.65642628, lon: 29.4056405143178 },
+    { name: 'Ova Cad. 4. Durak', lat: 38.65363534, lon: 29.40518826 },
+    { name: 'Ova Cad. 5. Durak', lat: 38.65167337, lon: 29.40425434 },
+    { name: 'Ova Cad. 6. Durak', lat: 38.65031685, lon: 29.40384741 },
+    { name: 'Ova Cad. 7. Durak', lat: 38.64872177, lon: 29.40370115 },
+    { name: 'Ova Cad. 8. Durak', lat: 38.64741104, lon: 29.40377223 },
+    { name: 'Ova Cad. 9. Durak', lat: 38.64632373, lon: 29.40341503 },
+    { name: 'Yenidoğan Sokak', lat: 38.64346272, lon: 29.40689651 },
+    { name: 'Ova Cad. 10. Durak', lat: 38.64016036, lon: 29.40240719 },
+    { name: 'Ova Cad. 11. Durak', lat: 38.63928613, lon: 29.40211339 },
+    { name: 'Ova Cad. 12. Durak', lat: 38.63834592, lon: 29.4018223 },
+    { name: 'Ova Cad. 13. Durak', lat: 38.63412928, lon: 29.40054163 },
+    { name: 'Ova Cad. 14. Durak', lat: 38.63401673, lon: 29.40066763 },
+    { name: 'Ova Cad. 15. Durak', lat: 38.63305667, lon: 29.40054664 },
+    { name: 'Ovademirler Köyü Yolu 2. Durak', lat: 38.63130214, lon: 29.39937567 },
+    { name: 'Ovademirler Köyü Yolu 3. Durak', lat: 38.63119568, lon: 29.39734514 },
+    { name: 'Ertuğrul Gazi Cd.', lat: 38.63091197, lon: 29.39281176 },
+    { name: 'Seramik Evleri', lat: 38.63084411, lon: 29.39024338 }
+];
+
+    var busRoute = L.polyline(
+      busStops.map((stop) => [stop.lat, stop.lon]),
+      { color: 'blue' }
+    ).addTo(map);
+
+    busStops.forEach((stop) => {
+      L.marker([stop.lat, stop.lon]).bindPopup(stop.name).addTo(map);
+    });
+
+    var movingMarker = L.marker([busStops[0].lat, busStops[0].lon], {
+      icon: L.divIcon({ className: 'moving-marker' }),
+    }).addTo(map);
+
+    var currentIndex = 0;
+    var totalStops = busStops.length;
+    var speed = 1000;
+    var animationTimer;
+    var isAnimating = false; 
+
+    function animateMarker() {
+      if (!isAnimating) return; 
+
+      currentIndex = (currentIndex + 1) % totalStops;
+      var stop = busStops[currentIndex];
+
+      movingMarker
+        .setLatLng([stop.lat, stop.lon])
+        .bindPopup(stop.name)
+        .openPopup();
+
+      map.setView([stop.lat, stop.lon], 16);
+
+      animationTimer = setTimeout(animateMarker, speed);
+    }
+
+    document.getElementById('startButton').addEventListener('click', function() {
+      isAnimating = true;
+      animateMarker();
+      this.style.display = 'none';
+      document.getElementById('stopButton').style.display = 'inline-block';
+    });
+
+    document.getElementById('stopButton').addEventListener('click', function() {
+      isAnimating = false; 
+      clearTimeout(animationTimer);
+      this.style.display = 'none';
+      document.getElementById('startButton').style.display = 'inline-block';
+    });
+
+    document.getElementById('speed1x').addEventListener('click', function() {
+      speed = 1000;
+      if (isAnimating) resetAnimation(); 
+    });
+
+    document.getElementById('speed2x').addEventListener('click', function() {
+      speed = 500;
+      if (isAnimating) resetAnimation(); 
+    });
+
+    document.getElementById('speed4x').addEventListener('click', function() {
+      speed = 250; 
+      if (isAnimating) resetAnimation(); 
+    });
+
+    function resetAnimation() {
+      clearTimeout(animationTimer);
+      animateMarker();
+    }
+
+    // Konum izni iste
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          var userLatLng = [position.coords.latitude, position.coords.longitude];
+          
+          
+          L.circle(userLatLng, {
+            color: 'red',
+            fillColor: '#DC143C', 
+            fillOpacity: 0.7,
+            radius: 40 // Çemberin yarıçapı 
+          }).addTo(map)
+            .bindPopup("Konumunuz")
+            .openPopup();
+
+          map.setView(userLatLng, 12); // Konuma odaklan
+        },
+        function (error) {
+          console.error("Konum alınamadı:", error);
+          
+          map.setView([38.682, 29.408], 13);
+        }
+      );
+    } else {
+      console.error("Tarayıcınız konum belirlemeyi desteklemiyor.");
+     
+      map.setView([38.682, 29.408], 13);
+    }
+  </script>
+</body>
+
+</html>

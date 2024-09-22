@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Halk Konutları</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <style>
+    #map {
+      height: 100vh; 
+      width: 100%; 
+    }
+
+    .moving-marker {
+      background-color: red; 
+      border-radius: 50%; 
+      width: 15px; 
+      height: 15px; 
+    }
+    body{
+      overflow: hidden;
+    }
+
+    #startButton, #stopButton {
+      position: relative; 
+      z-index: 1000; 
+      padding: 10px;
+      border: 1px solid gray;
+      cursor: pointer;
+      margin-left: 10px; 
+    }
+
+    #startButton {
+      background-color: green; 
+      color: white;
+    }
+
+    #stopButton {
+      background-color: red;
+      color: white;
+      display: none; 
+    }
+
+    #map {
+      position: relative;
+    }
+
+    #speedBar {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 1000;
+      background-color: white;
+      border: 1px solid gray;
+      padding: 5px;
+      display: flex; 
+      align-items: center; 
+      border-radius: 5px; 
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+  <div id="speedBar">
+    Hız:
+    <button id="speed1x">1x</button>
+    <button id="speed2x">2x</button>
+    <button id="speed4x">4x</button>
+    <button id="startButton">Animasyonu Başlat</button>
+    <button id="stopButton">Animasyonu Durdur</button>
+  </div>
+  <script>
+    var map = L.map('map').setView([38.682, 29.408], 13); 
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:
+        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    // Koordinatlar ve isimler
+    var busStops = [
+    { name: 'üniversite son durak', lat: 38.67473390115207, lon: 29.31843777764841 },
+    { name: 'Karaağaç Yolu,Kaşbelen-2.durak', lat: 38.67494430787792, lon: 29.33333113775501 },
+    { name: 'Uşak Ünv Kaşbelen-3.durak', lat: 38.67606883782859, lon: 29.33284007711221 },
+    { name: 'D300,Hacıkadem-2.durak', lat: 38.67404875164909, lon: 29.34625800184752 },
+    { name: 'hacıkadem durağı', lat: 38.67454378467133, lon: 29.35632402 },
+    { name: 'Dikilitaş, D300-1.durak', lat: 38.67466551393067, lon: 29.36316849802547 },
+    { name: 'Dikilitaş, Atatürk Blv-2.durak', lat: 38.67503565889939, lon: 29.36734810516616 },
+    { name: 'Dikilitaş, Atatürk Blv-1.durak', lat: 38.67594078398553, lon: 29.37136199093747 },
+    { name: 'Dikilitaş, Hacı Badem Cd-1.durak', lat: 38.67690290624277, lon: 29.37501936998888 },
+    { name: 'Dikilitaş, Atatürk Blv. Yanyolu-1.durak', lat: 38.67783103900511, lon: 29.37954804299765 },
+    { name: 'Dikilitaş, Cami Sk-1.durak', lat: 38.67746178847668, lon: 29.3837619453827 },
+    { name: 'Ünalan, Atatürk Blv.Yanyolu-2.durak', lat: 38.67691933585863, lon: 29.3862887387448 },
+    { name: 'Uşak, Ünalan-1.durak', lat: 38.67629740176865, lon: 29.38924798629374 },
+    { name: 'Ünalan, Atatürk Blv.Yanyolu-1.durak', lat: 38.6755763975391, lon: 29.39153588938882 },
+    { name: 'Ünalan, 2. Baş Sk-1.durak', lat: 38.67448480309078, lon: 29.39400723835532 },
+    { name: 'Ünalan, Atatürk Blv-1.durak', lat: 38.67347165492083, lon: 29.39567297418127 },
+    { name: 'Ünalan, Atatürk Blv. Yanyolu-1.durak', lat: 38.67180621530282, lon: 29.39885881329048 },
+    { name: 'Kurtuluş, Atatürk Blv. Yanyolu-1.durak', lat: 38.67102781568725, lon: 29.40419734826055 },
+    { name: 'Durak-6.durak', lat: 38.67093988712212, lon: 29.40908041015688 },
+    { name: 'Durak, D300 63-35-5.durak', lat: 38.67056497895594, lon: 29.41225599978228 },
+    { name: 'Durak, D300-4.durak', lat: 38.67044643448383, lon: 29.4148112557331 },
+    { name: 'Durak, D300 94-93-3.durak', lat: 38.67073921646985, lon: 29.41795044408934 },
+    { name: 'Durak, D300 97-2.durak', lat: 38.67137053317356, lon: 29.42095177799821 },
+    { name: 'Sarayaltı, Gazi Blv. Yanyolu-3.durak', lat: 38.67240467328486, lon: 29.42373396525991 },
+    { name: 'Sarayaltı, Gazi Blv. Yanyolu-2.durak', lat: 38.67404732921887, lon: 29.42770968713975 },
+    { name: 'Sarayaltı, 1. Tarım Sk-1.durak', lat: 38.67474902419013, lon: 29.42998878342418 },
+    { name: 'Sarayaltı, Gazi Blv. Yanyolu-1.durak', lat: 38.6767945478185, lon: 29.44185208566787 },
+    { name: 'hastane durağı', lat: 38.67752532581029, lon: 29.45079740667378 }
+];
+
+    var busRoute = L.polyline(
+      busStops.map((stop) => [stop.lat, stop.lon]),
+      { color: 'blue' }
+    ).addTo(map);
+
+    busStops.forEach((stop) => {
+      L.marker([stop.lat, stop.lon]).bindPopup(stop.name).addTo(map);
+    });
+
+    var movingMarker = L.marker([busStops[0].lat, busStops[0].lon], {
+      icon: L.divIcon({ className: 'moving-marker' }),
+    }).addTo(map);
+
+    var currentIndex = 0;
+    var totalStops = busStops.length;
+    var speed = 1000;
+    var animationTimer;
+    var isAnimating = false; 
+
+    function animateMarker() {
+      if (!isAnimating) return; 
+
+      currentIndex = (currentIndex + 1) % totalStops;
+      var stop = busStops[currentIndex];
+
+      movingMarker
+        .setLatLng([stop.lat, stop.lon])
+        .bindPopup(stop.name)
+        .openPopup();
+
+      map.setView([stop.lat, stop.lon], 16);
+
+      animationTimer = setTimeout(animateMarker, speed);
+    }
+
+    document.getElementById('startButton').addEventListener('click', function() {
+      isAnimating = true;
+      animateMarker();
+      this.style.display = 'none';
+      document.getElementById('stopButton').style.display = 'inline-block';
+    });
+
+    document.getElementById('stopButton').addEventListener('click', function() {
+      isAnimating = false; 
+      clearTimeout(animationTimer);
+      this.style.display = 'none';
+      document.getElementById('startButton').style.display = 'inline-block';
+    });
+
+    document.getElementById('speed1x').addEventListener('click', function() {
+      speed = 1000;
+      if (isAnimating) resetAnimation(); 
+    });
+
+    document.getElementById('speed2x').addEventListener('click', function() {
+      speed = 500;
+      if (isAnimating) resetAnimation(); 
+    });
+
+    document.getElementById('speed4x').addEventListener('click', function() {
+      speed = 250; 
+      if (isAnimating) resetAnimation(); 
+    });
+
+    function resetAnimation() {
+      clearTimeout(animationTimer);
+      animateMarker();
+    }
+
+    // Konum izni iste
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          var userLatLng = [position.coords.latitude, position.coords.longitude];
+          
+          
+          L.circle(userLatLng, {
+            color: 'red',
+            fillColor: '#DC143C', 
+            fillOpacity: 0.7,
+            radius: 40 // Çemberin yarıçapı 
+          }).addTo(map)
+            .bindPopup("Konumunuz")
+            .openPopup();
+
+          map.setView(userLatLng, 12); // Konuma odaklan
+        },
+        function (error) {
+          console.error("Konum alınamadı:", error);
+          
+          map.setView([38.682, 29.408], 13);
+        }
+      );
+    } else {
+      console.error("Tarayıcınız konum belirlemeyi desteklemiyor.");
+     
+      map.setView([38.682, 29.408], 13);
+    }
+  </script>
+</body>
+
+</html>

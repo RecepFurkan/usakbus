@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Halk Konutları</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <style>
+    #map {
+      height: 100vh; 
+      width: 100%; 
+    }
+
+    .moving-marker {
+      background-color: red; 
+      border-radius: 50%; 
+      width: 15px; 
+      height: 15px; 
+    }
+    body{
+      overflow: hidden;
+    }
+
+    #startButton, #stopButton {
+      position: relative; 
+      z-index: 1000; 
+      padding: 10px;
+      border: 1px solid gray;
+      cursor: pointer;
+      margin-left: 10px; 
+    }
+
+    #startButton {
+      background-color: green; 
+      color: white;
+    }
+
+    #stopButton {
+      background-color: red;
+      color: white;
+      display: none; 
+    }
+
+    #map {
+      position: relative;
+    }
+
+    #speedBar {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 1000;
+      background-color: white;
+      border: 1px solid gray;
+      padding: 5px;
+      display: flex; 
+      align-items: center; 
+      border-radius: 5px; 
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+  <div id="speedBar">
+    Hız:
+    <button id="speed1x">1x</button>
+    <button id="speed2x">2x</button>
+    <button id="speed4x">4x</button>
+    <button id="startButton">Animasyonu Başlat</button>
+    <button id="stopButton">Animasyonu Durdur</button>
+  </div>
+  <script>
+    var map = L.map('map').setView([38.682, 29.408], 13); 
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:
+        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    // Koordinatlar ve isimler
+    var busStops = [
+    { name: 'Kemalöz, 3.yokus Sk 1.Durak', lat: 38.67288523924347, lon: 29.37353894794605 },
+    { name: 'Kemalöz, 1. Göker SK-1.Durak', lat: 38.67179644549452, lon: 29.37290562030945 },
+    { name: 'Kemalöz, 1. Çoker Sk-1.Durak', lat: 38.67005691371645, lon: 29.37219597504491 },
+    { name: 'Kemalöz, Aksaray Cd 1.Durak', lat: 38.66828147060711, lon: 29.37222266014548 },
+    { name: 'Kemalöz, Aksaray Cd 2.Durak', lat: 38.66664078783497, lon: 29.37222565782756 },
+    { name: 'Atakent 1. Durak', lat: 38.6650757012788, lon: 29.37100969589358 },
+    { name: 'Atakent 2.Durak', lat: 38.66411321844615, lon: 29.36978171436453 },
+    { name: 'Atakent 3. Durak', lat: 38.66245280647583, lon: 29.36945702363393 },
+    { name: 'Atakent 4. Durak', lat: 38.6629620489783, lon: 29.37128158394005 },
+    { name: 'Toki 1. Durak', lat: 38.66185140198544, lon: 29.37332530608157 },
+    { name: 'Toki 2. Durak', lat: 38.66022140147474, lon: 29.37188237091659 },
+    { name: 'Toki 3. Durak', lat: 38.65903824048525, lon: 29.37088290283502 },
+    { name: 'Toki 4. Durak', lat: 38.65948581963515, lon: 29.37265066471377 },
+    { name: 'Toki 5. Durak', lat: 38.66058218601017, lon: 29.37374192832333 },
+    { name: 'Toki 6. Durak', lat: 38.66174984029371, lon: 29.37491215625879 },
+    { name: 'Pırlanta Sok. 1. Durak', lat: 38.66401247126158, lon: 29.37758933196952 },
+    { name: 'Pırlanta Sok. 2. Durak', lat: 38.66511021585964, lon: 29.37940370545529 },
+    { name: 'Pırlanta Sok. 3. Durak', lat: 38.66515274054121, lon: 29.37924699782321 },
+    { name: 'Pırlanta Sok. 5. Durak', lat: 38.66577709084623, lon: 29.38029255771444 },
+    { name: 'Pırlanta Sok. 6. Durak', lat: 38.66586385674121, lon: 29.38018533357233 },
+    { name: 'Pırlanta Sok. 4. Durak', lat: 38.66679324374903, lon: 29.38193664379071 },
+    { name: 'Pırlanta Sok. 7 Durak', lat: 38.6670022865806, lon: 29.38204910334063 },
+    { name: 'Pırlanta Sok. 8. Durak', lat: 38.66794295051827, lon: 29.38387558328596 },
+    { name: 'Pırlanta Sok. 9Durak', lat: 38.66912891963224, lon: 29.38513227636722 },
+    { name: 'Pırlanta Sok. 10. Durak', lat: 38.66918008703536, lon: 29.38493032073458 },
+    { name: 'İbrahim Tahta Kılıç Cad. 1. Durak', lat: 38.66953149444144, lon: 29.38664046665142 },
+    { name: 'İbrahim Tahta Kılıç Cad. 2 Durak', lat: 38.66709197358445, lon: 29.38739573449853 },
+    { name: 'İbrahim Tahta Kılıç Cad. 3. Durak', lat: 38.66555683799042, lon: 29.38830933847034 },
+    { name: 'İbrahim Tahta Kılıç Cad. 4. Durak', lat: 38.66355752243435, lon: 29.38958879873067 },
+    { name: 'İbrahim Tahta Kılıç Cad. 5. Durak', lat: 38.66202439596991, lon: 29.39101098979286 },
+    { name: 'İbrahim Tahtakılıç 6. Durak', lat: 38.6618650353567, lon: 29.39163472073847 },
+    { name: 'İbrahim Tahta Kılıç Cad. 7. Durak', lat: 38.66313205504002, lon: 29.39035166464237 },
+    { name: 'İbrahim Tahta Kılıç Cad. 8. Durak', lat: 38.66575935192021, lon: 29.38864562294613 },
+    { name: 'İbrahim Tahta Kılıç Cad. 9 Durak', lat: 38.6669059839306, lon: 29.3879397967342 },
+    { name: 'İbrahim Tahta Kılıç Cad. 10. Durak', lat: 38.66875575466795, lon: 29.38724314452967 },
+    { name: 'Kuyucak Yolu 1.Durak', lat: 38.66346616697066, lon: 29.39409966712304 },
+    { name: 'Kuyucak Yolu 2. Durak', lat: 38.66205678008668, lon: 29.39285814887511 },
+    { name: 'Kuyucak Yolu 3. Durak', lat: 38.66205218845538, lon: 29.39261571899031 },
+    { name: 'Cumhuriyet, 3. Hakem Sk', lat: 38.66478985453428, lon: 29.39561476509988 },
+    { name: 'Cumhuriyet, Kuyucak Yolu Sk', lat: 38.6659867361974, lon: 29.39695059118346 },
+    { name: 'Mehmet Topaç Blv 1. Durak', lat: 38.66620361884343, lon: 29.39768879003859 },
+    { name: 'Mehmet Topaç Blv 2. Durak', lat: 38.6670235473283, lon: 29.39612283947445 },
+    { name: 'Mehmet Topaç Blv 3. Durak', lat: 38.66859727195897, lon: 29.39454238115415 },
+    { name: 'Mehmet Topaç Blv 4. Durak', lat: 38.6701040470396, lon: 29.3937788082085 },
+    { name: 'Mehmet Topaç Blv 5 Durak', lat: 38.67208074182245, lon: 29.39307890415551 },
+    { name: 'Kemalöz, Mehmet Topaç Blv-1.Durak', lat: 38.67445967609197, lon: 29.39227570174812 },
+    { name: 'Kemalöz, Mehmet Topaç Blv-2.Durak', lat: 38.67418086852204, lon: 29.39269606183466 },
+    { name: 'Kemalöz, Atatürk Blv.Yanyolu-3.Durak', lat: 38.67411713249478, lon: 29.39371461338733 },
+    { name: 'Ünalan, 2. Baş Sk-1.Durak', lat: 38.67448480309078, lon: 29.39400723835532 },
+    { name: 'Ünalan, Atatürk Blv-1.Durak', lat: 38.67347165492083, lon: 29.39567297418127 },
+    { name: 'Kemalöz, Atatürk Blv.Yanyolu-4.Durak', lat: 38.67289277940229, lon: 29.39577875486286 },
+    { name: 'Cumhuriyet, 3. Hakem Sk', lat: 38.66478985453428, lon: 29.39561476509988 }, 
+    { name: 'Kemalöz, Kültür Sitesi-1.Durak', lat: 38.67138362929391, lon: 29.39861258504402 },
+    { name: 'Ünalan, Atatürk Blv. Yanyolu-1.Durak', lat: 38.67180621530282, lon: 29.39885881329048 },
+    { name: 'Cumhuriyet, Atatürk Blv. Yanyolu- 1.Durak', lat: 38.67072093342841, lon: 29.40152571487794 },
+    { name: 'Kurtuluş, Atatürk Blv. Yanyolu-1.Durak', lat: 38.67102781568725, lon: 29.40419734826055 },
+    { name: 'Cumhuriyet, Atatürk Blv. Yanyolu 2.Durak', lat: 38.67061121612684, lon: 29.40489460372012 },
+    { name: 'Durak-6.Durak', lat: 38.67093988712212, lon: 29.40908041015688 },
+    { name: 'Uşak, Durak, 1.Durak', lat: 38.6704988554408, lon: 29.40909440017148 },
+    { name: 'Durak, D300 63-35-5.Durak', lat: 38.67056497895594, lon: 29.41225599978228 },
+    { name: 'Fevzi Çakmak, 1. Yay Sk- 1.Durak', lat: 38.67018433596795, lon: 29.41218901973839 },
+    { name: 'Durak, D300-4.Durak', lat: 38.67044643448383, lon: 29.4148112557331 },
+    { name: 'Fevzi Çakmak, Gazi Blv. Yanyolu-1.Durak', lat: 38.6700391375517, lon: 29.41437709305201 },
+    { name: 'Durak, D300 94-93-3.Durak', lat: 38.67073921646985, lon: 29.41795044408934 },
+    { name: 'Fevzi Çakmak - 2.Durak', lat: 38.6703497136541, lon: 29.41835626179817 },
+    { name: 'Durak, D300 97-2.Durak', lat: 38.67137053317356, lon: 29.42095177799821 },
+    { name: 'Fevzi Çakmak, Gazi Blv- 1.Durak', lat: 38.67084808952405, lon: 29.42075036140998 },
+    { name: 'Sarayaltı, Gazi Blv. Yanyolu-3.DURAK', lat: 38.67240467328486, lon: 29.42373396525991 },
+    { name: 'Dikilitaş, Kıbrıs Cd- 1.DURAK', lat: 38.673236699497416, lon: 29.426771878929173 },
+    { name: 'Sarayaltı, Gazi Blv. Yanyolu-2.DURAK', lat: 38.67404732921887, lon: 29.42770968713975 },
+    { name: 'Fevzi Çakmak, D300- 1.DURAK', lat: 38.6743855942526, lon: 29.430289150286 },
+    { name: 'Sarayaltı, 1. Tarım Sk-1.DURAK', lat: 38.67474902419013, lon: 29.42998878342418 },
+    { name: 'Fevzi Çakmak, D300-2.DURAK', lat: 38.67647341509588, lon: 29.44200103952868 },
+    { name: 'Sarayaltı, Gazi Blv. Yanyolu-1.DURAK', lat: 38.6767945478185, lon: 29.44185208566787 },
+    { name: 'Hastane Durağı', lat: 38.67752532581029, lon: 29.45079740667378 }
+];
+
+    var busRoute = L.polyline(
+      busStops.map((stop) => [stop.lat, stop.lon]),
+      { color: 'blue' }
+    ).addTo(map);
+
+    busStops.forEach((stop) => {
+      L.marker([stop.lat, stop.lon]).bindPopup(stop.name).addTo(map);
+    });
+
+    var movingMarker = L.marker([busStops[0].lat, busStops[0].lon], {
+      icon: L.divIcon({ className: 'moving-marker' }),
+    }).addTo(map);
+
+    var currentIndex = 0;
+    var totalStops = busStops.length;
+    var speed = 1000;
+    var animationTimer;
+    var isAnimating = false; 
+
+    function animateMarker() {
+      if (!isAnimating) return; 
+
+      currentIndex = (currentIndex + 1) % totalStops;
+      var stop = busStops[currentIndex];
+
+      movingMarker
+        .setLatLng([stop.lat, stop.lon])
+        .bindPopup(stop.name)
+        .openPopup();
+
+      map.setView([stop.lat, stop.lon], 16);
+
+      animationTimer = setTimeout(animateMarker, speed);
+    }
+
+    document.getElementById('startButton').addEventListener('click', function() {
+      isAnimating = true;
+      animateMarker();
+      this.style.display = 'none';
+      document.getElementById('stopButton').style.display = 'inline-block';
+    });
+
+    document.getElementById('stopButton').addEventListener('click', function() {
+      isAnimating = false; 
+      clearTimeout(animationTimer);
+      this.style.display = 'none';
+      document.getElementById('startButton').style.display = 'inline-block';
+    });
+
+    document.getElementById('speed1x').addEventListener('click', function() {
+      speed = 1000;
+      if (isAnimating) resetAnimation(); 
+    });
+
+    document.getElementById('speed2x').addEventListener('click', function() {
+      speed = 500;
+      if (isAnimating) resetAnimation(); 
+    });
+
+    document.getElementById('speed4x').addEventListener('click', function() {
+      speed = 250; 
+      if (isAnimating) resetAnimation(); 
+    });
+
+    function resetAnimation() {
+      clearTimeout(animationTimer);
+      animateMarker();
+    }
+
+    // Konum izni iste
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          var userLatLng = [position.coords.latitude, position.coords.longitude];
+          
+          
+          L.circle(userLatLng, {
+            color: 'red',
+            fillColor: '#DC143C', 
+            fillOpacity: 0.7,
+            radius: 40 // Çemberin yarıçapı 
+          }).addTo(map)
+            .bindPopup("Konumunuz")
+            .openPopup();
+
+          map.setView(userLatLng, 12); // Konuma odaklan
+        },
+        function (error) {
+          console.error("Konum alınamadı:", error);
+          
+          map.setView([38.682, 29.408], 13);
+        }
+      );
+    } else {
+      console.error("Tarayıcınız konum belirlemeyi desteklemiyor.");
+     
+      map.setView([38.682, 29.408], 13);
+    }
+  </script>
+</body>
+
+</html>
